@@ -3,7 +3,6 @@ import React from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link'
 
-import 'primereact/resources/themes/mira/theme.css';
 import { Menubar } from 'primereact/menubar';
 import 'primeicons/primeicons.css';
 import { Toolbar } from 'primereact/toolbar';
@@ -37,7 +36,7 @@ export default function MenuBar () {
         }
     ]
     return (
-        <Menubar model={menubar} />
+        <Menubar model={menubar} style={{backgroundColor: 'rgb(64, 99, 70'}}/>
         // <Toolbar start={
         //     <React.Fragment>
         //         <Link href='/logger'>Logger</Link>

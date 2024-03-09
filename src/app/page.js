@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 
-import 'primereact/resources/themes/mira/theme.css';
+import 'primereact/resources/themes/saga-green/theme.css';
 import { PrimeReactProvider } from 'primereact/api';
 import { Card } from 'primereact/card';
 import { Button } from 'primereact/button';

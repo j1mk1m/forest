@@ -1,21 +1,20 @@
 'use client';
-import React from 'react';
-import { useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 
-import 'primereact/resources/themes/mira/theme.css';
 import { PrimeReactProvider, PrimeReactContext } from 'primereact/api';
 import { Card } from 'primereact/card';
 import { Toolbar } from 'primereact/toolbar';
 import { Divider } from 'primereact/divider';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
-import { DataView, DataViewLayoutOptions } from 'primereact/dataview';
+import { Fieldset } from 'primereact/fieldset';
 import { Button } from 'primereact/button';
 import { Dialog } from 'primereact/dialog';
 import { InputText } from 'primereact/inputtext';
 import { InputNumber } from 'primereact/inputnumber';
 import { InputSwitch } from 'primereact/inputswitch';
 import { Calendar } from 'primereact/calendar';
+import { Toast } from 'primereact/toast';
 import { Dropdown } from 'primereact/dropdown';
 import { InputTextarea } from 'primereact/inputtextarea';
 import { Password } from 'primereact/password';
@@ -25,9 +24,11 @@ import MenuBar from '@/app/_components/menubar';
 
 import { db, auth } from '@/app/page';
 import { collection, getDocs, doc, setDoc, addDoc, deleteDoc } from 'firebase/firestore';
+import { classNames } from 'primereact/utils';
 
 
 export default function Home() {
+    const toast = useRef(null);
     let today = new Date();
     today.setHours(0, 0, 0, 0);
     const [weekOf, setWeekOf] = useState(today);
@@ -48,8 +49,7 @@ export default function Home() {
     const [selectedLog, setSelectedLog] = useState(null);
     const [editingId, setEditingId] = useState(null);
 
-    const updateItems = (newDate) => {
-        console.log(items);
+    const updateItems = (logs, newDate) => {
         setItems(items.map((doc) => {
             const predicate = (value, index) => {
                 return value.Item.id == doc.id;
@@ -100,7 +100,8 @@ export default function Home() {
             }));
             setWeekOf(newDate);
         } catch (error) {
-            console.log(error);   
+            toast.current.show({ severity: 'error', summary: 'Error', detail: 'Could not fetch data' }); 
+            console.log(error);
         }
     }
 
@@ -132,7 +133,7 @@ export default function Home() {
 
     const editButtonTemplate = (value) => {
         return (
-            <Button icon="pi pi-pencil" onClick={() => editItem(value)} />
+            <Button icon="pi pi-pencil" onClick={() => editItem(value)} rounded text raised />
         )
     }
 
@@ -148,23 +149,27 @@ export default function Home() {
 
     const editButtonLogTemplate = (value) => {
         return (
-            <Button icon="pi pi-pencil" onClick={() => editLog(value)} />
+            <Button icon="pi pi-pencil" onClick={() => editLog(value)} rounded text raised />
         );
     }
 
     const goBackWeek = () => {
         const newDate = new Date(weekOf.getTime() - 7 * 24 * 60 * 60 * 1000);
         setWeekOf(newDate);
-        updateItems(newDate);
+        updateItems(logs, newDate);
     }
 
     const goForwardWeek = () => {
         const newDate = new Date(weekOf.getTime() + 7 * 24 * 60 * 60 * 1000);
         setWeekOf(newDate);
-        updateItems(newDate);
+        updateItems(logs, newDate);
     }
     
     const addItem = async () => {
+        if (itemName == "") {
+            toast.current.show({ severity: 'warn', summary: 'Warning', detail: 'Name field is required' });
+            return;
+        }
         try {
             const data = {
                 Name: itemName,
@@ -176,22 +181,32 @@ export default function Home() {
                 await setDoc(doc(db, "log_items", editingId), data);
                 items[items.findIndex((doc) => doc.id == editingId)] = {...data, id:editingId};
             } else {
-                await addDoc(collection(db, "log_items"), data);
-                items.push(data);
+                const ret = await addDoc(collection(db, "log_items"), data);
+                items.push({...data, id: ret.id});
             }
-            setItems(items); 
+            setItems(items);
             setItemName("");
             setItemDesc("");
             setItemCat("");
             setItemBool(false);
             setEditItemVisible(false);
+            if (editingId) {
+                toast.current.show({ severity: 'success', summary: 'Success', detail: 'Item Successfully Edited!' });
+            } else {
+                toast.current.show({ severity: 'success', summary: 'Success', detail: 'Item Successfully Added!' });
+            }
             setEditingId(null);
         } catch (error) { 
+            toast.current.show({ severity: 'error', summary: 'Error', detail: 'Could not add Item' });
             console.log(error);
         }
     }
 
     const addLog = async () => {
+        if (logName == "") {
+            toast.current.show({ severity: 'warn', summary: 'Warning', detail: 'Name field is required' });
+            return;
+        }
         try {
             const data = {
                 Name: logName,
@@ -204,10 +219,11 @@ export default function Home() {
                 await setDoc(doc(db, "logs", editingId), data);
                 logs[logs.findIndex((doc) => doc.id == editingId)] = {...data, item: logItem, id:editingId};
             } else {
-                await addDoc(collection(db, "logs"), data);
-                logs.push({...data, item: logItem});
+                const ret = await addDoc(collection(db, "logs"), data);
+                logs.push({...data, item: logItem, id: ret.id});
             }
             setLogs(logs);
+            updateItems(logs, weekOf);
             setLogName("");
             setLogDesc("");
             let today = new Date();
@@ -215,10 +231,16 @@ export default function Home() {
             setLogDate(today);
             setLogItem("");
             setLogNumber(1);
-            setEditingId(null);
             setEditLogVisible(false);
+            if (editingId) {
+                toast.current.show({ severity: 'success', summary: 'Success', detail: 'Log Successfully Edited!' });
+            } else {
+                toast.current.show({ severity: 'success', summary: 'Success', detail: 'Log Successfully Added!' });
+            }
+            setEditingId(null);
         } catch (error) {
-           console.log(error);
+            toast.current.show({ severity: 'error', summary: 'Error', detail: 'Could not add Log' });
+            console.log(error);
         }
     }
 
@@ -227,7 +249,9 @@ export default function Home() {
             try {
                 await deleteDoc(doc(db, "log_items", selectedItem.id));
                 setItems(items.filter((doc) => doc.id != selectedItem.id));
+                toast.current.show({ severity: 'success', summary: 'Success', detail: 'Item Successfully Deleted!' });
             } catch (error) {
+                toast.current.show({ severity: 'error', summary: 'Error', detail: 'Could not delete Item' });
                 console.log(error);
             }
         }
@@ -236,13 +260,16 @@ export default function Home() {
         if (selectedLog) {
             try {
                 await deleteDoc(doc(db, "logs", selectedLog.id));
-                setLogs(logs.filter((doc) => doc.id != selectedLog.id));
+                const newLogs = logs.filter((doc) => doc.id != selectedLog.id)
+                setLogs(newLogs);
+                updateItems(newLogs, weekOf);
+                toast.current.show({ severity: 'success', summary: 'Success', detail: 'Log Successfully Deleted!' });
             } catch (error) {
+                toast.current.show({ severity: 'error', summary: 'Error', detail: 'Could not delete Log' });
                 console.log(error);
             }
         }
     }
-
 
     useEffect(() => {
         fetchData();
@@ -250,22 +277,23 @@ export default function Home() {
 
     return (
         <PrimeReactProvider>
-            <MenuBar />
-            <h1 className="text-black m-5 text-center">Logger</h1>
-            <Card header="Calendar" className="bg-white text-gray-700 shadow-md rounded-md p-5 m-5">
-            <Toolbar 
+            <Toast ref={toast} />
+            <MenuBar/>
+            <h1 className="text-black text-lg font-bold m-3 p-2 text-center">Logger</h1>
+            <Toolbar className='p-2 mx-3 rounded-xl'
+                start={<h3 className='font-bold pl-2'>Calendar</h3>}
                 center={<React.Fragment>
+                        <Button icon="pi pi-angle-left" onClick={goBackWeek} className='mx-1' rounded text />
                         <p>Week of: {weekOf.toDateString()}</p>
-                        <Button icon="pi pi-angle-left" onClick={goBackWeek} />
-                        <Button icon="pi pi-angle-right" onClick={goForwardWeek} />
+                        <Button icon="pi pi-angle-right" onClick={goForwardWeek} className='mx-1' rounded text />
                     </React.Fragment>}
                 end={<React.Fragment>
-                    <Button className='bg-inherit' icon="pi pi-plus" onClick={() => setEditItemVisible(true)}/>
-                    <Button className='bg-ref' icon="pi pi-trash" onClick={deleteItem}/>
+                    <Button className='mx-1' icon="pi pi-plus" onClick={() => setEditItemVisible(true)} rounded text raised />
+                    <Button className='mx-1 text-red-400' icon="pi pi-trash" onClick={deleteItem} rounded text raised />
                 </React.Fragment>}
             />
-            <DataTable value={items} selectionMode="single" selection={selectedItem}
-                onSelectionChange={(e) => setSelectedItem(e.value)} paginator rows={10}>
+            <DataTable value={items} selectionMode="single" selection={selectedItem} className='mx-3'
+                onSelectionChange={(e) => setSelectedItem(e.value)} paginator rows={15} sortField='Category' sortOrder={1}>
                 <Column field="Name" sortable header="Name"></Column>
                 <Column field="Category" sortable header="Category" filter filterField='Category'></Column>
                 {/* <Column field="Description" sortable header="Description"></Column>" */}
@@ -278,67 +306,64 @@ export default function Home() {
                 <Column field="6" header="Sun" body={(value) => boolTemplate(value, "6")}></Column>
                 <Column body={(value) => editButtonTemplate(value)} />
             </DataTable>
-            </Card>
-            <Card header="Logs" className="bg-white text-gray-700 shadow-md rounded-md p-5 m-5">
-            <Toolbar 
+            <Toolbar start={<h3 className='pl-2 font-bold'>Logs</h3>} className='p-2 mx-3 mt-3 rounded-xl'
                 end={ <React.Fragment>
-                    <Button className='bg-inherit' icon="pi pi-plus" onClick={() => setEditLogVisible(true)}/>
-                    <Button className='bg-ref' icon="pi pi-trash" onClick={deleteLog}/>
+                    <Button className='mx-1' icon="pi pi-plus" onClick={() => setEditLogVisible(true)} rounded text raised/>
+                    <Button className='mx-1 text-red-400' icon="pi pi-trash" onClick={deleteLog} rounded text raised />
                 </React.Fragment>
                 }
             />
-            <DataTable value={logs} selectionMode="single" selection={selectedLog}
-                onSelectionChange={(e) => setSelectedLog(e.value)} paginator rows={10}>
+            <DataTable className='mx-3 my-0' value={logs} selectionMode="single" selection={selectedLog}
+                onSelectionChange={(e) => setSelectedLog(e.value)} paginator rows={15} sortField='Date' sortOrder={-1}>
                 <Column field="Name" sortable header="Name"></Column>
                 <Column field="item" sortable header="Item" filter filterField='item'></Column>
                 <Column field="Date" sortable header="Date" body={dateTemplate}></Column>
-                <Column field="Description" header="Description"></Column>
                 <Column field="Number" header="Number"></Column>
                 <Column body={(value) => editButtonLogTemplate(value)} />
             </DataTable>
-            </Card>
-            <Dialog header="Item" visible={editItemVisible} style={{ width: '50vw'}} onHide={() => setEditItemVisible(false)}>
+            {/* Edit Item and Log Popups */}
+            <Dialog header="Item" visible={editItemVisible} className='min-w-max' onHide={() => setEditItemVisible(false)}>
                 <div class='flex flex-col'>
-                    <div class='flex flex-row py-2 items-center'>
+                    <div className='flex flex-row py-2 items-center'>
                         <p>Name: </p>
-                        <InputText value={itemName} placeholder='Name' onChange={(e) => setItemName(e.target.value)} className="ml-3"/>
+                        <InputText value={itemName} placeholder='Name' onChange={(e) => setItemName(e.target.value)} className="ml-3 flex-1"/>
                     </div>
-                    <div class='flex flex-row py-2 items-center'>
+                    <div className='flex flex-row py-2 items-center'>
                         <p>Category: </p>
-                        <InputText value={itemCat} placeholder='Category' onChange={(e) => setItemCat(e.target.value)} className="ml-3"/>
+                        <InputText value={itemCat} placeholder='Category' onChange={(e) => setItemCat(e.target.value)} className="ml-3 flex-1"/>
                     </div>
-                    <div class='flex flex-row py-2 items-center'>
+                    <div className='flex flex-row py-2 items-center'>
                         <p>Description: </p>
-                        <InputTextarea value={itemDesc} placeholder='Description' onChange={(e) => setItemDesc(e.target.value)} rows={3} className="ml-3"/>
+                        <InputTextarea value={itemDesc} placeholder='Description' onChange={(e) => setItemDesc(e.target.value)} rows={5} className="ml-3 flex-1"/>
                     </div>
-                    <div class='flex flex-row py-2 items-center'>
-                        <p>Bool Or Number: </p>
+                    <div className='flex flex-row py-2 items-center'>
+                        <p className='flex-1'>Bool Or Number: </p>
                         <InputSwitch checked={itemBool} onChange={(e) => setItemBool(e.value)} className="ml-3"/>
                     </div>
                     <Button label='Submit' onClick={addItem} />
                 </div>
             </Dialog>
-            <Dialog header="Log" visible={editLogVisible} style={{ width: '50vw' }} onHide={() => setEditLogVisible(false)}>
+            <Dialog header="Log" visible={editLogVisible} className='min-w-max' onHide={() => setEditLogVisible(false)}>
                 <div class='flex flex-col'>
-                    <div class='flex flex-row py-2 items-center'>
+                    <div className='flex flex-row py-2 items-center'>
                         <p>Name: </p>
-                        <InputText value={logName} placeholder='Name' onChange={(e) => setLogName(e.target.value)} className='ml-5' />
+                        <InputText value={logName} placeholder='Name' onChange={(e) => setLogName(e.target.value)} className='ml-3 flex-1' />
                     </div>
-                    <div class='flex flex-row py-2 items-start'>
-                        <p>Description: </p>
-                        <InputTextarea value={logDesc} placeholder='Description' onChange={(e) => setLogDesc(e.target.value)} rows={3} className='ml-5'/>
-                    </div>
-                    <div class='flex flex-row py-2 items-center'>
+                    <div className='flex flex-row py-2 items-center'>
                         <p>Item: </p>
-                        <Dropdown value={logItem} onChange={(e) => setLogItem(e.value)} options={items.map((doc) => doc.Name)} placeholder='Pick Item' className='ml-5'/>
+                        <Dropdown value={logItem} onChange={(e) => setLogItem(e.value)} options={items.map((doc) => doc.Name)} placeholder='Pick Item' className='ml-3 flex-1'/>
                     </div>
-                    <div class='flex flex-row py-2 items-center'>
+                    <div className='flex flex-row py-2 items-center'>
                         <p>Date: </p>
-                        <Calendar value={logDate} onChange={(e) => setLogDate(e.value)} className='ml-5'/>
+                        <Calendar value={logDate} onChange={(e) => setLogDate(e.value)} className='ml-3 flex-1'/>
                     </div>
-                    <div class='flex flex-row py-2 items-center'>
+                    <div className='flex flex-row py-2 items-center'>
                         <p>Number: </p>
-                        <InputNumber value={logNumber} onChange={(e) => setLogNumber(e.value)} className='ml-5'/>
+                        <InputNumber value={logNumber} onChange={(e) => setLogNumber(e.value)} className='ml-3 flex-1'/>
+                    </div>
+                    <div className='flex flex-row py-2 items-center'>
+                        <p>Description: </p>
+                        <InputTextarea value={logDesc} placeholder='Description' onChange={(e) => setLogDesc(e.target.value)} rows={3} className='ml-3 flex-1'/>
                     </div>
                 <Button label='Submit' onClick={addLog} />
                 </div>

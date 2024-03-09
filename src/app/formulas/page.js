@@ -1,6 +1,5 @@
 'use client';
-import React from 'react';
-import { useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 
 import { PrimeReactProvider, PrimeReactContext, PrimeIcons } from 'primereact/api';
 import { Card } from 'primereact/card';
@@ -9,6 +8,7 @@ import { Divider } from 'primereact/divider';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { DataView, DataViewLayoutOptions } from 'primereact/dataview';
+import { MultiSelect } from 'primereact/multiselect';
 import { Button } from 'primereact/button';
 import { Checkbox } from 'primereact/checkbox';
 import { Dialog } from 'primereact/dialog';
@@ -17,9 +17,10 @@ import { InputNumber } from 'primereact/inputnumber';
 import { InputSwitch } from 'primereact/inputswitch';
 import { Calendar } from 'primereact/calendar';
 import { Dropdown } from 'primereact/dropdown';
+import { Toast } from 'primereact/toast';
+import { ToggleButton } from 'primereact/togglebutton';
 import { InputTextarea } from 'primereact/inputtextarea';
 import { Password } from 'primereact/password';
-import 'primereact/resources/themes/mira/theme.css';
 import 'primeicons/primeicons.css';
 
 import MenuBar from '@/app/_components/menubar';
@@ -27,6 +28,7 @@ import { db, auth } from '@/app/page';
 import { collection, getDocs, doc, setDoc, addDoc, deleteDoc, updateDoc } from 'firebase/firestore';
 
 export default function Page () {
+    const toast = useRef(null);
     const [formulas, setFormulas] = useState([]);
     const [variables, setVariables] = useState([]);
     const [selectedVar, setSelectedVar] = useState(null);
@@ -38,10 +40,10 @@ export default function Page () {
     const [varTruth, setVarTruth] = useState(false);
     const [formName, setFormName] = useState("");
     const [formTags, setFormTags] = useState("");
-    const [formForm, setFormForm] = useState("");
     const [formDetails, setFormDetails] = useState("");
     const [formLink, setFormLink] = useState("");
     const [editingId, setEditingId] = useState(null);
+    const [selectedVars, setSelectedVars] = useState([]);
 
     const updateFormula = () => {
         const nameArray = variables.filter((doc) => doc.truthValue).map((doc) => doc.name.toLowerCase());
@@ -77,6 +79,7 @@ export default function Page () {
                 }
             ));
         } catch (error){
+            toast.current.show({ severity: 'error', summary: 'Error', detail: 'Could not fetch data' });
             console.log(error);
         }
     }
@@ -88,6 +91,7 @@ export default function Page () {
             variables[index].truthValue = e.checked;
             updateFormula();
         } catch (error) {
+            toast.current.show({ severity: 'error', summary: 'Error', detail: 'Could not update Variable' });
             console.log(error);
         }
     }
@@ -100,9 +104,9 @@ export default function Page () {
 
     const boolTemplate = (value) => {
         if (value.canMake) {
-            return (<i className="pi pi-check" style={{ color: 'slateblue' }}></i>);
+            return (<i className="pi pi-check" style={{ color: 'green' }}></i>);
         } else {
-            return (<i className="pi pi-times" style={{ color: 'red' }}></i>);
+            return (<i className="pi pi-times" style={{ color: 'red'}}></i>);
         }
     }
 
@@ -111,18 +115,22 @@ export default function Page () {
         setFormName(item.name);
         setFormDetails(item.details);
         setFormTags(item.tags);
-        setFormForm(item.formula);
+        setSelectedVars(item.formula.split(',').map((v) => v.trim()));
         setFormLink(item.link);
         setEditForm(true);
     }
 
     const editButtonTemplate = (value) => {
         return (
-            <Button icon="pi pi-pencil" onClick={() => editFormula(value)} />
+            <Button icon="pi pi-pencil" onClick={() => editFormula(value)} rounded text raised/>
         )
     }
 
     const addVar = async () => {
+        if (varName == "") {
+            toast.current.show({ severity: 'warn', summary: 'Warning', detail: 'Name field is required' });
+            return;
+        }
         try {
             const data = {
                 name: varName,
@@ -137,18 +145,24 @@ export default function Page () {
             setVarTruth(false);
             setEditVar(false);
             updateFormula();
+            toast.current.show({ severity: 'sucess', summary: 'Success', detail: 'Variable Successfully Added!' });
         } catch (error) { 
+            toast.current.show({ severity: 'error', summary: 'Error', detail: 'Could not add Variable' });
             console.log(error);
         }
     }
 
     const addForm = async () => {
+        if (formName == "") {
+            toast.current.show({ severity: 'warn', summary: 'Warning', detail: 'Name field is required' });
+            return;
+        }
         try {
             const data = {
                 name: formName,
                 tags: formTags,
                 details: formDetails,
-                formula: formForm,
+                formula: selectedVars.join(', '),
                 link: formLink,
             };
             if (editingId) {
@@ -162,12 +176,18 @@ export default function Page () {
             setFormName("");
             setFormDetails("");
             setFormLink("");
-            setFormForm("");
+            setSelectedVars([]);
             setFormTags("");
             setEditForm(false);
-            setEditingId(null);
             updateFormula();
+            if (editingId) {
+                toast.current.show({ severity: 'sucess', summary: 'Success', detail: 'Formula Successfully Edited!' });
+            } else {
+                toast.current.show({ severity: 'sucess', summary: 'Success', detail: 'Formula Successfully Added!' });
+            }
+            setEditingId(null);
         } catch (error) { 
+            toast.current.show({ severity: 'error', summary: 'Error', detail: 'Could not add Formula' });
             console.log(error);
         }
     }
@@ -177,7 +197,9 @@ export default function Page () {
             try {
                 await deleteDoc(doc(db, "variables", selectedVar.id));
                 setVariables(variables.filter((doc) => doc.id != selectedVar.id));
+                toast.current.show({ severity: 'sucess', summary: 'Success', detail: 'Variable Successfully Deleted!' });
             } catch (error) {
+                toast.current.show({ severity: 'error', summary: 'Error', detail: 'Could not delete Variable' });
                 console.log(error);
             }
         }
@@ -188,10 +210,25 @@ export default function Page () {
             try {
                 await deleteDoc(doc(db, "formulas", selectedForm.id));
                 setFormulas(formulas.filter((doc) => doc.id != selectedForm.id));
+                toast.current.show({ severity: 'sucess', summary: 'Success', detail: 'Formula Successfully Deleted!' });
             } catch (error) {
+                toast.current.show({ severity: 'error', summary: 'Error', detail: 'Could not delete Formula' });
                 console.log(error);
             }
         }
+    }
+
+    const clearDialog = () => {
+        setVarName("");
+        setVarType("");
+        setVarTruth(false);
+        setFormDetails("");
+        setFormName("");
+        setFormLink("");
+        setFormTags("");
+        setSelectedVars([]);
+        setEditVar(false);
+        setEditForm(false)
     }
 
     useEffect(() => {
@@ -200,80 +237,79 @@ export default function Page () {
 
     return (
         <PrimeReactProvider>
+            <Toast ref={toast} />
             <MenuBar/>
-            <h1 className="text-black m-5 text-center">Formulas</h1>
-            <Card header="Variables" className='m-5 p-3'>
-                <Toolbar 
+            <h1 className="text-black text-lg font-bold m-3 p-2 text-center">Formulas</h1>
+                <Toolbar className='p-2 mx-3 rounded-xl' 
+                    start={<h3 className='font-bold pl-2'>Variables</h3>}
                     end={ <React.Fragment>
-                        <Button className='bg-inherit' icon="pi pi-plus" onClick={() => setEditVar(true)}/>
-                        <Button className='bg-ref' icon="pi pi-trash" onClick={deleteVar}/>
+                        <Button className='m-1' icon="pi pi-plus" onClick={() => setEditVar(true)} rounded text raised/>
+                        <Button className='m-1 text-red-400' icon="pi pi-trash" onClick={deleteVar} rounded text raised/>
                     </React.Fragment>
                     }
                 />
-                <DataTable value={variables} selectionMode="single" selection={selectedVar}
-                onSelectionChange={(e) => setSelectedVar(e.value)} paginator rows={10}>
+                <DataTable value={variables} selectionMode="single" selection={selectedVar} className='mx-3'
+                onSelectionChange={(e) => setSelectedVar(e.value)} paginator rows={25} sortField='type' sortOrder={1}>
                     <Column field='name' header='Name' sortable filter/>
                     <Column field='type' header='Type' sortable filter/>
-                    <Column field='truthValue' header='Have' body={truthValueTemplate} sortable filter/>
+                    <Column field='truthValue' header='T/F' body={truthValueTemplate} sortable filter/>
                 </DataTable>
-            </Card>
-            <Card header="Formulas" className='m-5 p-3'>
-                <Toolbar 
+                <Toolbar className='p-2 mx-3 mt-3 rounded-xl'
+                    start={<h3 className='pl-2 font-bold'>Formulas</h3>}
                     end={ <React.Fragment>
-                        <Button className='bg-inherit' icon="pi pi-plus" onClick={() => setEditForm(true)}/>
-                        <Button className='bg-ref' icon="pi pi-trash" onClick={deleteForm}/>
+                        <Button className='m-1' icon="pi pi-plus" onClick={() => setEditForm(true)} rounded text raised/>
+                        <Button className='m-1 text-red-400' icon="pi pi-trash" onClick={deleteForm} rounded text raised/>
                     </React.Fragment>
                     }
                 />
-                <DataTable value={formulas} selectionMode="single" selection={selectedForm}
-                onSelectionChange={(e) => setSelectedForm(e.value)} paginator rows={10}>
+                <DataTable value={formulas} selectionMode="single" selection={selectedForm} className='mx-3'
+                onSelectionChange={(e) => setSelectedForm(e.value)} paginator rows={10} sortField='canMake' sortOrder={-1}>
                     <Column field='name' header='Name' sortable filter/>
-                    <Column field='tags' header='Tags' filter/>
+                    <Column field='tags' header='Tags' sortable filter/>
                     <Column field='formula' header='Formula'/>
-                    <Column field='details' header='Details'/>
-                    <Column field='link' header='Link'/>
-                    <Column field='canMake' header="Can Make" body={boolTemplate} sortable/>
+                    {/* <Column field='details' header='Details'/>
+                    <Column field='link' header='Link'/> */}
+                    <Column field='canMake' header="T/F" body={boolTemplate} sortable/>
                     <Column body={(value) => editButtonTemplate(value)} />
                 </DataTable>
-            </Card>
-            <Dialog header="Variable" visible={editVar} style={{ width: '50vw'}} onHide={() => setEditVar(false)}>
+            <Dialog header="Variable" visible={editVar} className='min-w-max' onHide={clearDialog}>
                 <div class='flex flex-col'>
-                    <div class='flex flex-row py-2 items-center'>
+                    <div className='flex flex-row py-2 items-center'>
                         <p>Name: </p>
-                        <InputText value={varName} placeholder='Name' onChange={(e) => setVarName(e.target.value)} className="ml-3"/>
+                        <InputText value={varName} placeholder='Name' onChange={(e) => setVarName(e.target.value)} className="ml-3 flex-1"/>
                     </div>
-                    <div class='flex flex-row py-2 items-center'>
+                    <div className='flex flex-row py-2 items-center'>
                         <p>Type: </p>
-                        <InputText value={varType} placeholder='Type' onChange={(e) => setVarType(e.target.value)} className="ml-3"/>
+                        <InputText value={varType} placeholder='Type' onChange={(e) => setVarType(e.target.value)} className="ml-3 flex-1"/>
                     </div>
-                    <div class='flex flex-row py-2 items-center'>
-                        <p>Truth Value: </p>
-                        <InputSwitch checked={varTruth} onChange={(e) => setVarTruth(e.value)} className="ml-3"/>
+                    <div className='flex flex-row py-2 items-center'>
+                        <ToggleButton checked={varTruth} onChange={(e) => setVarTruth(e.value)} className="flex-1" onLabel='True' offLabel='False'/>
                     </div>
                     <Button label='Submit' onClick={addVar} />
                 </div>
             </Dialog>
-            <Dialog header="Formula" visible={editForm} style={{ width: '50vw'}} onHide={() => setEditForm(false)}>
+            <Dialog header="Formula" visible={editForm} className='min-w-max' onHide={clearDialog}>
                 <div class='flex flex-col'>
-                    <div class='flex flex-row py-2 items-center'>
+                    <div className='flex flex-row py-2 items-center'>
                         <p>Name: </p>
-                        <InputText value={formName} placeholder='Name' onChange={(e) => setFormName(e.target.value)} className="ml-3"/>
+                        <InputText value={formName} placeholder='Name' onChange={(e) => setFormName(e.target.value)} className="ml-3 flex-1"/>
                     </div>
-                    <div class='flex flex-row py-2 items-center'>
+                    <div className='flex flex-row py-2 items-center'>
                         <p>Tags: </p>
-                        <InputText value={formTags} placeholder='Type' onChange={(e) => setFormTags(e.target.value)} className="ml-3"/>
+                        <InputText value={formTags} onChange={(e) => setFormTags(e.target.value)} className="ml-3 flex-1"/>
                     </div>
-                    <div class='flex flex-row py-2 items-center'>
+                    <div className='flex flex-row py-2 items-center'>
                         <p>Formula: </p>
-                        <InputText value={formForm} placeholder='Type' onChange={(e) => setFormForm(e.target.value)} className="ml-3"/>
+                        <MultiSelect value={selectedVars} onChange={(e) => setSelectedVars(e.value)} options={variables.map(v => v.name)}
+                            placeholder="Select Variables" maxSelectedLabels={3} className="w-full md:w-20rem" filter/>
                     </div>
-                    <div class='flex flex-row py-2 items-center'>
+                    <div className='flex flex-row py-2 items-center'>
                         <p>Details: </p>
-                        <InputText value={formDetails} placeholder='Type' onChange={(e) => setFormDetails(e.target.value)} className="ml-3"/>
+                        <InputTextarea value={formDetails} rows={3} onChange={(e) => setFormDetails(e.target.value)} className="ml-3 flex-1"/>
                     </div>
-                    <div class='flex flex-row py-2 items-center'>
+                    <div className='flex flex-row py-2 items-center'>
                         <p>Link: </p>
-                        <InputText value={formLink} placeholder='Type' onChange={(e) => setFormLink(e.target.value)} className="ml-3"/>
+                        <InputText value={formLink} onChange={(e) => setFormLink(e.target.value)} className="ml-3 flex-1"/>
                     </div>
                     <Button label='Submit' onClick={addForm} />
                 </div>
