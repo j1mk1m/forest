@@ -34,11 +34,15 @@ export default function Page () {
     const [loading, setLoading] = useState(true);
 
     const dateTemplate = (value) => {
-        if (value.date.seconds) {
-            const date = new Date(value.date.seconds * 1000);
-            return date.toDateString();
+        if (value.date) {
+            if (value.date.seconds) {
+                const date = new Date(value.date.seconds * 1000);
+                return date.toDateString();
+            } else {
+                return value.date.toDateString();
+            }
         } else {
-            return value.date.toDateString();
+            return "";
         }
     }
 
@@ -133,8 +137,10 @@ export default function Page () {
         setEditingId(item.id);
         setFname(item.first_name);
         setLname(item.last_name);
-        const newDate = new Date(item.date.seconds * 1000);
-        setDate(newDate);
+        if (item.date) {
+            const newDate = new Date(item.date.seconds * 1000);
+            setDate(newDate);
+        }
         setTags(item.tags.join(", "));
         setInteractions(item.interactions.join(",\n"));
         setConts(item.contacts.join(",\n"));
