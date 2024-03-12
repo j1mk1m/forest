@@ -1,26 +1,18 @@
 'use client';
 import React, { useRef, useState, useEffect } from 'react';
 
-import { PrimeReactProvider, PrimeReactContext, PrimeIcons } from 'primereact/api';
-import { Card } from 'primereact/card';
+import { PrimeReactProvider } from 'primereact/api';
 import { Toolbar } from 'primereact/toolbar';
-import { Divider } from 'primereact/divider';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
-import { DataView, DataViewLayoutOptions } from 'primereact/dataview';
 import { MultiSelect } from 'primereact/multiselect';
 import { Button } from 'primereact/button';
 import { Checkbox } from 'primereact/checkbox';
 import { Dialog } from 'primereact/dialog';
 import { InputText } from 'primereact/inputtext';
-import { InputNumber } from 'primereact/inputnumber';
-import { InputSwitch } from 'primereact/inputswitch';
-import { Calendar } from 'primereact/calendar';
-import { Dropdown } from 'primereact/dropdown';
 import { Toast } from 'primereact/toast';
 import { ToggleButton } from 'primereact/togglebutton';
 import { InputTextarea } from 'primereact/inputtextarea';
-import { Password } from 'primereact/password';
 import 'primeicons/primeicons.css';
 
 import MenuBar from '@/app/_components/menubar';
@@ -44,6 +36,7 @@ export default function Page () {
     const [formLink, setFormLink] = useState("");
     const [editingId, setEditingId] = useState(null);
     const [selectedVars, setSelectedVars] = useState([]);
+    const [loading, setLoading] = useState(true);
 
     const updateFormula = () => {
         const nameArray = variables.filter((doc) => doc.truthValue).map((doc) => doc.name.toLowerCase());
@@ -78,6 +71,7 @@ export default function Page () {
                     return {...doc, canMake:true};
                 }
             ));
+            setLoading(false);
         } catch (error){
             toast.current.show({ severity: 'error', summary: 'Error', detail: 'Could not fetch data' });
             console.log(error);
@@ -227,6 +221,7 @@ export default function Page () {
         setFormLink("");
         setFormTags("");
         setSelectedVars([]);
+        setEditingId(null);
         setEditVar(false);
         setEditForm(false)
     }
@@ -239,7 +234,8 @@ export default function Page () {
         <PrimeReactProvider>
             <Toast ref={toast} />
             <MenuBar/>
-            <h1 className="text-black text-lg font-bold m-3 p-2 text-center">Formulas</h1>
+            <h1 className="text-black text-lg font-bold mx-3 mt-2 px-2 pt-1 text-center">varphi</h1>
+            <h3 className='text-grey text-sm italic text-center mb-3'>formula manager</h3>
                 <Toolbar className='p-2 mx-3 rounded-xl' 
                     start={<h3 className='font-bold pl-2'>Variables</h3>}
                     end={ <React.Fragment>
@@ -248,8 +244,8 @@ export default function Page () {
                     </React.Fragment>
                     }
                 />
-                <DataTable value={variables} selectionMode="single" selection={selectedVar} className='mx-3'
-                onSelectionChange={(e) => setSelectedVar(e.value)} paginator rows={25} sortField='type' sortOrder={1}>
+                <DataTable value={variables} selectionMode="single" selection={selectedVar} className='mx-3' loading={loading}
+                onSelectionChange={(e) => setSelectedVar(e.value)} sortField='type' sortOrder={1} scrollable scrollHeight='400px'>
                     <Column field='name' header='Name' sortable filter/>
                     <Column field='type' header='Type' sortable filter/>
                     <Column field='truthValue' header='T/F' body={truthValueTemplate} sortable filter/>
@@ -262,7 +258,7 @@ export default function Page () {
                     </React.Fragment>
                     }
                 />
-                <DataTable value={formulas} selectionMode="single" selection={selectedForm} className='mx-3'
+                <DataTable value={formulas} selectionMode="single" selection={selectedForm} className='mx-3' loading={loading}
                 onSelectionChange={(e) => setSelectedForm(e.value)} paginator rows={10} sortField='canMake' sortOrder={-1}>
                     <Column field='name' header='Name' sortable filter/>
                     <Column field='tags' header='Tags' sortable filter/>

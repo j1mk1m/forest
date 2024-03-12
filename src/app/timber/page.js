@@ -9,7 +9,16 @@ export default function Page () {
     return (
         <PrimeReactProvider>
             <MenuBar/>
-            <p>Contacts</p>
+            <h1 className="text-black text-lg font-bold m-3 p-2 text-center">timber - task manager</h1>
         </PrimeReactProvider>
     );
 }
+
+/*
+Task
+Type
+Urgency
+Due Date
+Done
+
+*/

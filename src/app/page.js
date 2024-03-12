@@ -1,14 +1,13 @@
 'use client';
 import React from 'react';
-import { useState, useEffect } from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/router';
+import { useState } from 'react';
 
 import 'primereact/resources/themes/saga-green/theme.css';
 import { PrimeReactProvider } from 'primereact/api';
 import { Card } from 'primereact/card';
 import { Button } from 'primereact/button';
 import { InputText } from 'primereact/inputtext';
+import { InputNumber } from 'primereact/inputnumber';
 import { Password } from 'primereact/password';
 import 'primeicons/primeicons.css';
 
@@ -40,12 +39,17 @@ export const auth = getAuth();
 export default function Home() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
-    const [authUser, setAuthUser] = useState(false)
+    const [authUser, setAuthUser] = useState(false);
+    const [loading, setLoading] = useState(true);
+
+    const [number, setNumber] = useState(52);
+    const [disabled, setDisabled] = useState(false);
 
     auth.onAuthStateChanged((authUser) => {
         authUser
         ? setAuthUser(true)
         : setAuthUser(false);
+        setLoading(false);
     });
 
     const handleSignin = () => {
@@ -61,16 +65,50 @@ export default function Home() {
         setEmail("");
         setPassword("");
     }
+
+    const startFocus = () => {
+        const time = number;
+        setNumber(52);
+        setDisabled(true);
+        const timeEl = document.getElementById('timeleft');
+        timeEl.innerHTML = time;
+        const timeout = setInterval(() => timeEl.innerHTML -= 1, 60000);
+        setTimeout(() => {
+            clearInterval(timeout);
+            if (!("Notification" in window)) {
+                alert("This browser does not support desktop notification");
+            } else if (Notification.permission === "granted") {
+                const notification = new Notification("Time!");
+            } else if (Notification.permission !== "denied") {
+                Notification.requestPermission().then((permission) => {
+                if (permission === "granted") {
+                    const notification = new Notification("Time!");
+                }
+                });
+            }
+            setDisabled(false);
+        }, time * 60 * 1000);
+    }
+
+    if (loading) {
+        return (
+            <PrimeReactProvider>
+                <h1 className='center text-xl m-3 p-3'>Loading...</h1>
+            </PrimeReactProvider>
+        )
+    }
     
     if (!authUser) {
         return (
             <PrimeReactProvider>
-                <Card className="md:w-25rem">                
-                    <h1 className='text-black m-5 text-center'>Sign In</h1>
-                    <InputText value={email} onChange={(e) => setEmail(e.target.value)} />
-                    <Password value={password} onChange={(e) => setPassword(e.target.value)} feedback={false} tabIndex={1} />
-                    <Button label='Sign In' onClick={handleSignin} />
-                </Card>
+                <div style={{minHeight: '100vh'}} className='justify-center items-center flex'>
+                    <Card className="flex flex-col items-center w-fit p-0">
+                        <h1 className='font-bold text-xl text-center my-1 py-0 text-green-900'>forest</h1>
+                        <div className='width: 100% flex flex-row'><InputText value={email} placeholder='Email' onChange={(e) => setEmail(e.target.value)} className='mx-3 my-1 p-2 flex-1'/></div>
+                        <div className='width: 100% flex flex-row'><Password value={password} placeholder='Password' onChange={(e) => setPassword(e.target.value)} feedback={false} tabIndex={1} className='m-3 flex-1'/></div>
+                        <div className='flex'><Button label='Sign In' onClick={handleSignin} className='mx-3 my-1 p-2 flex-1'/></div>
+                    </Card>
+                </div>
             </PrimeReactProvider>
         );
     }
@@ -78,7 +116,27 @@ export default function Home() {
     return (
         <PrimeReactProvider>
             <MenuBar />
-            <h1 className="text-black m-5 text-center">Welcome!</h1>
+            <h1 className="text-black text-lg font-bold m-5 text-center">forest</h1>
+            <p className='text-black text-md text-center'>Start a new focus session...</p>
+            <div className='flex items-center justify-center content-center my-1'>
+                <InputNumber value={number} placeholder='minutes' disabled={disabled} onChange={(e) => setNumber(e.value)} className='mx-2'/>
+                <Button label='start' onClick={startFocus}/>
+            </div>
+            <div className='flex items-center justify-center'>
+                <p id="timeleft" className='text-center'>0</p>
+                <p className='text-center mx-1'>minutes remaining</p>
+            </div>
         </PrimeReactProvider>
     );
 }
+
+/*
+Features for Home page:
+Contacts - upcoming birthdays
+To do - upcoming tasks
+Logger - recent logs
+Formulas - 
+
+focus?
+Achievements: 
+*/

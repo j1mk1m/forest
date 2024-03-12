@@ -10,39 +10,40 @@ import { Toolbar } from 'primereact/toolbar';
 export default function MenuBar () {
     const router = useRouter();
     const menubar = [
+        // {
+        //     id: 'timber',
+        //     label: 'timber',
+        //     icon: 'pi pi-list',
+        //     command: () => {
+        //         router.push('/timber');
+        //     }
+        // },
         {
             id: 'logger',
-            label: 'Logger',
+            label: 'logger',
             icon: 'pi pi-book',
             command: () => {
                 router.push('/logger');
             }
         },
         {
-            id: 'contacts',
-            label: 'Contacts',
-            icon: 'pi pi-users',
+            id: 'varphi',
+            label: 'varphi',
+            icon: 'pi pi-calculator',
             command: () => {
-                router.push('/contacts');
+                router.push('/varphi');
             }
         },
         {
-            id: 'formulas',
-            label: 'Formulas',
-            icon: 'pi pi-calculator',
+            id: 'parrot',
+            label: 'parrot',
+            icon: 'pi pi-users',
             command: () => {
-                router.push('/formulas');
+                router.push('/parrot');
             }
-        }
+        },
     ]
     return (
-        <Menubar model={menubar} style={{backgroundColor: 'rgb(64, 99, 70'}}/>
-        // <Toolbar start={
-        //     <React.Fragment>
-        //         <Link href='/logger'>Logger</Link>
-        //         <Link href='/contacts'>Contacts</Link>
-        //         <Link href='/formulas'>Formulas</Link>
-        //     </React.Fragment>
-        // } />
+        <Menubar model={menubar} start={<Link href='/'><h3 className='text-white text-lg mx-2'>forest</h3></Link>} style={{backgroundColor: 'rgb(64, 99, 70'}}/>
     );
 }

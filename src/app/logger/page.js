@@ -271,6 +271,21 @@ export default function Home() {
         }
     }
 
+    const clearDialog = () => {
+        setItemName("");
+        setItemBool(false);
+        setItemCat("");
+        setItemDesc("");
+        setLogName("");
+        setLogDate(today);
+        setLogDesc("");
+        setLogItem(null);
+        setLogNumber(0);
+        setEditingId(false);
+        setEditItemVisible(false);
+        setEditLogVisible(false);
+    }
+
     useEffect(() => {
         fetchData();
     }, []);
@@ -279,7 +294,8 @@ export default function Home() {
         <PrimeReactProvider>
             <Toast ref={toast} />
             <MenuBar/>
-            <h1 className="text-black text-lg font-bold m-3 p-2 text-center">Logger</h1>
+            <h1 className="text-black text-lg font-bold mx-3 mt-2 px-2 pt-1 text-center">logger</h1>
+            <h3 className='text-grey text-sm italic text-center mb-3'>log manager</h3>
             <Toolbar className='p-2 mx-3 rounded-xl'
                 start={<h3 className='font-bold pl-2'>Calendar</h3>}
                 center={<React.Fragment>
@@ -293,7 +309,7 @@ export default function Home() {
                 </React.Fragment>}
             />
             <DataTable value={items} selectionMode="single" selection={selectedItem} className='mx-3'
-                onSelectionChange={(e) => setSelectedItem(e.value)} paginator rows={15} sortField='Category' sortOrder={1}>
+                onSelectionChange={(e) => setSelectedItem(e.value)} scrollable scrollHeight='400px' sortField='Category' sortOrder={1}>
                 <Column field="Name" sortable header="Name"></Column>
                 <Column field="Category" sortable header="Category" filter filterField='Category'></Column>
                 {/* <Column field="Description" sortable header="Description"></Column>" */}
@@ -322,7 +338,7 @@ export default function Home() {
                 <Column body={(value) => editButtonLogTemplate(value)} />
             </DataTable>
             {/* Edit Item and Log Popups */}
-            <Dialog header="Item" visible={editItemVisible} className='min-w-max' onHide={() => setEditItemVisible(false)}>
+            <Dialog header="Item" visible={editItemVisible} className='min-w-max' onHide={clearDialog}>
                 <div class='flex flex-col'>
                     <div className='flex flex-row py-2 items-center'>
                         <p>Name: </p>
@@ -343,7 +359,7 @@ export default function Home() {
                     <Button label='Submit' onClick={addItem} />
                 </div>
             </Dialog>
-            <Dialog header="Log" visible={editLogVisible} className='min-w-max' onHide={() => setEditLogVisible(false)}>
+            <Dialog header="Log" visible={editLogVisible} className='min-w-max' onHide={clearDialog}>
                 <div class='flex flex-col'>
                     <div className='flex flex-row py-2 items-center'>
                         <p>Name: </p>
