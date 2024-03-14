@@ -5,9 +5,7 @@ import { PrimeReactProvider } from 'primereact/api';
 import { Toolbar } from 'primereact/toolbar';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
-import { MultiSelect } from 'primereact/multiselect';
 import { Button } from 'primereact/button';
-import { Checkbox } from 'primereact/checkbox';
 import { Dialog } from 'primereact/dialog';
 import { InputText } from 'primereact/inputtext';
 import { Toast } from 'primereact/toast';
@@ -16,7 +14,7 @@ import { InputTextarea } from 'primereact/inputtextarea';
 import 'primeicons/primeicons.css';
 
 import MenuBar from '@/app/_components/menubar';
-import { db, auth } from '@/app/page';
+import { db } from '@/app/page';
 import { collection, getDocs, doc, setDoc, addDoc, deleteDoc, updateDoc } from 'firebase/firestore';
 
 export default function Page () {
@@ -56,7 +54,7 @@ export default function Page () {
                     full_name: full_name, 
                     tags_string: doc.data().tags.join(", "),
                     contacts_string: doc.data().contacts.join(", "),
-                    interactions_preview: doc.data().interactions.join(", ").substring(0, 50),
+                    interactions_preview: doc.data().interactions.join("; ").substring(0, 50),
                 };
             }); 
             setContacts(newContacts);
@@ -77,7 +75,7 @@ export default function Page () {
                 first_name: fname,
                 last_name: lname, 
                 tags: tags.split(",").map((doc) => doc.trim()),
-                interactions: interactions.split(",").map((doc) => doc.trim()),
+                interactions: interactions.split(";").map((doc) => doc.trim()),
                 contacts: conts.split(",").map((doc) => doc.trim()),
                 date: date
             };
@@ -126,6 +124,7 @@ export default function Page () {
                 await deleteDoc(doc(db, "contacts", selected.id));
                 setItems(contacts.filter((doc) => doc.id != selected.id));
                 toast.current.show({ severity: 'success', summary: 'Success', detail: 'Contact Successfully Deleted!' });
+                setSelected(null);
             } catch (error) {
                 toast.current.show({ severity: 'error', summary: 'Error', detail: 'Could not delete Item' });
                 console.log(error);
@@ -142,7 +141,7 @@ export default function Page () {
             setDate(newDate);
         }
         setTags(item.tags.join(", "));
-        setInteractions(item.interactions.join(",\n"));
+        setInteractions(item.interactions.join(";\n"));
         setConts(item.contacts.join(",\n"));
         setEdit(true);
     }
@@ -168,6 +167,16 @@ export default function Page () {
         fetchData();
     }, []);
 
+    if (loading) {
+        return (
+            <PrimeReactProvider>
+                 <div style={{minHeight: '100vh'}} className='justify-center items-center flex'>
+                    <i className="pi pi-spin pi-spinner" style={{ fontSize: '2rem' }}></i>
+                 </div>
+            </PrimeReactProvider>
+        )
+    }
+
     return (
         <PrimeReactProvider>
             <Toast ref={toast} />
@@ -184,7 +193,7 @@ export default function Page () {
                 }
             />
             <DataTable value={contacts} selectionMode="single" selection={selected} className='mx-3' loading={loading}
-            onSelectionChange={(e) => setSelected(e.value)} sortField='last_name' sortOrder={1} scrollable scrollHeight='400px' >
+            onSelectionChange={(e) => setSelected(e.value)} sortField='last_name' sortOrder={1} paginator rows={20} >
                 <Column field='first_name' header='First Name' sortable filter/>
                 <Column field='last_name' header='Last Name' sortable filter/>
                 <Column field='tags_string' header='Tags' sortable filter/>
@@ -224,12 +233,3 @@ export default function Page () {
         </PrimeReactProvider>
     );
 }
-
-/*
-Name (First, Last)
-Birthday
-Tags: array
-Contact: phone number, email, messenger, etc (array)
-Interactions: array of (date, string)
-
-*/

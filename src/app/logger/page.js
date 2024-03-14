@@ -19,13 +19,10 @@ import { Dropdown } from 'primereact/dropdown';
 import { InputTextarea } from 'primereact/inputtextarea';
 import { Password } from 'primereact/password';
 import 'primeicons/primeicons.css';
-
 import MenuBar from '@/app/_components/menubar';
 
 import { db, auth } from '@/app/page';
 import { collection, getDocs, doc, setDoc, addDoc, deleteDoc } from 'firebase/firestore';
-import { classNames } from 'primereact/utils';
-
 
 export default function Home() {
     const toast = useRef(null);
@@ -48,18 +45,22 @@ export default function Home() {
     const [selectedItem, setSelectedItem] = useState(null);
     const [selectedLog, setSelectedLog] = useState(null);
     const [editingId, setEditingId] = useState(null);
+    const [loading, setLoading] = useState(true);
 
-    const updateItems = (logs, newDate) => {
+    const updateItems = (newlogs, newDate) => {
         setItems(items.map((doc) => {
             const predicate = (value, index) => {
                 return value.Item.id == doc.id;
             }
-            const thisLogs = logs.filter(predicate);
+            const thisLogs = newlogs.filter(predicate);
             let week = {};
             for (let day = 0; day < 7; day++) {
                 const date = new Date(newDate.getTime() + day * 24*60*60*1000);
                 week[day] = (thisLogs.filter((value, index) => {
-                        return value.Date.seconds * 1000 == date.getTime();
+                        if (value.Date.seconds) {
+                            return value.Date.seconds * 1000 == date.getTime();
+                        }
+                        return value.Date.getTime() == date.getTime();
                     }).length > 0);
             }
             return {...doc, ...week};
@@ -99,6 +100,7 @@ export default function Home() {
                 return {...doc, ...week};
             }));
             setWeekOf(newDate);
+            setLoading(false);
         } catch (error) {
             toast.current.show({ severity: 'error', summary: 'Error', detail: 'Could not fetch data' }); 
             console.log(error);
@@ -141,7 +143,12 @@ export default function Home() {
         setEditingId(item.id);
         setLogName(item.Name);
         setLogDesc(item.Description);
-        setLogDate(item.Date);
+        if (item.Date.seconds) {
+            const newdate = new Date(item.Date.seconds * 1000);
+            setLogDate(newdate);
+        } else {
+            setLogDate(item.Date);
+        }
         setLogItem(item.item);
         setLogNumber(item.Number);
         setEditLogVisible(true);
@@ -184,18 +191,12 @@ export default function Home() {
                 const ret = await addDoc(collection(db, "log_items"), data);
                 items.push({...data, id: ret.id});
             }
-            setItems(items);
-            setItemName("");
-            setItemDesc("");
-            setItemCat("");
-            setItemBool(false);
-            setEditItemVisible(false);
+            clearDialog();
             if (editingId) {
                 toast.current.show({ severity: 'success', summary: 'Success', detail: 'Item Successfully Edited!' });
             } else {
                 toast.current.show({ severity: 'success', summary: 'Success', detail: 'Item Successfully Added!' });
             }
-            setEditingId(null);
         } catch (error) { 
             toast.current.show({ severity: 'error', summary: 'Error', detail: 'Could not add Item' });
             console.log(error);
@@ -205,6 +206,14 @@ export default function Home() {
     const addLog = async () => {
         if (logName == "") {
             toast.current.show({ severity: 'warn', summary: 'Warning', detail: 'Name field is required' });
+            return;
+        }
+        if (logItem == null) {
+            toast.current.show({ severity: 'warn', summary: 'Warning', detail: 'Log Item field is required' });
+            return;
+        }
+        if (logDate == null) {
+            toast.current.show({ severity: 'warn', summary: 'Warning', detail: 'Date field is required' });
             return;
         }
         try {
@@ -250,6 +259,7 @@ export default function Home() {
                 await deleteDoc(doc(db, "log_items", selectedItem.id));
                 setItems(items.filter((doc) => doc.id != selectedItem.id));
                 toast.current.show({ severity: 'success', summary: 'Success', detail: 'Item Successfully Deleted!' });
+                setSelectedItem(null);
             } catch (error) {
                 toast.current.show({ severity: 'error', summary: 'Error', detail: 'Could not delete Item' });
                 console.log(error);
@@ -263,6 +273,7 @@ export default function Home() {
                 const newLogs = logs.filter((doc) => doc.id != selectedLog.id)
                 setLogs(newLogs);
                 updateItems(newLogs, weekOf);
+                setSelectedLog(null);
                 toast.current.show({ severity: 'success', summary: 'Success', detail: 'Log Successfully Deleted!' });
             } catch (error) {
                 toast.current.show({ severity: 'error', summary: 'Error', detail: 'Could not delete Log' });
@@ -290,6 +301,16 @@ export default function Home() {
         fetchData();
     }, []);
 
+    if (loading) {
+        return (
+            <PrimeReactProvider>
+                 <div style={{minHeight: '100vh'}} className='justify-center items-center flex'>
+                    <i className="pi pi-spin pi-spinner" style={{ fontSize: '2rem' }}></i>
+                 </div>
+            </PrimeReactProvider>
+        )
+    }
+
     return (
         <PrimeReactProvider>
             <Toast ref={toast} />
@@ -308,8 +329,8 @@ export default function Home() {
                     <Button className='mx-1 text-red-400' icon="pi pi-trash" onClick={deleteItem} rounded text raised />
                 </React.Fragment>}
             />
-            <DataTable value={items} selectionMode="single" selection={selectedItem} className='mx-3'
-                onSelectionChange={(e) => setSelectedItem(e.value)} scrollable scrollHeight='400px' sortField='Category' sortOrder={1}>
+            <DataTable value={items} selectionMode="single" selection={selectedItem} className='mx-3' loading={loading}
+                onSelectionChange={(e) => setSelectedItem(e.value)} sortField='Category' sortOrder={1}>
                 <Column field="Name" sortable header="Name"></Column>
                 <Column field="Category" sortable header="Category" filter filterField='Category'></Column>
                 {/* <Column field="Description" sortable header="Description"></Column>" */}
@@ -329,7 +350,7 @@ export default function Home() {
                 </React.Fragment>
                 }
             />
-            <DataTable className='mx-3 my-0' value={logs} selectionMode="single" selection={selectedLog}
+            <DataTable className='mx-3 my-0' value={logs} selectionMode="single" selection={selectedLog} loading={loading}
                 onSelectionChange={(e) => setSelectedLog(e.value)} paginator rows={15} sortField='Date' sortOrder={-1}>
                 <Column field="Name" sortable header="Name"></Column>
                 <Column field="item" sortable header="Item" filter filterField='item'></Column>

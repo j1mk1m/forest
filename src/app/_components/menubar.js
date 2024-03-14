@@ -10,14 +10,14 @@ import { Toolbar } from 'primereact/toolbar';
 export default function MenuBar () {
     const router = useRouter();
     const menubar = [
-        // {
-        //     id: 'timber',
-        //     label: 'timber',
-        //     icon: 'pi pi-list',
-        //     command: () => {
-        //         router.push('/timber');
-        //     }
-        // },
+        {
+            id: 'timber',
+            label: 'timber',
+            icon: 'pi pi-list',
+            command: () => {
+                router.push('/timber');
+            }
+        },
         {
             id: 'logger',
             label: 'logger',

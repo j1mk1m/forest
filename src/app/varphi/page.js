@@ -191,6 +191,7 @@ export default function Page () {
             try {
                 await deleteDoc(doc(db, "variables", selectedVar.id));
                 setVariables(variables.filter((doc) => doc.id != selectedVar.id));
+                setSelectedVar(null);
                 toast.current.show({ severity: 'sucess', summary: 'Success', detail: 'Variable Successfully Deleted!' });
             } catch (error) {
                 toast.current.show({ severity: 'error', summary: 'Error', detail: 'Could not delete Variable' });
@@ -204,6 +205,7 @@ export default function Page () {
             try {
                 await deleteDoc(doc(db, "formulas", selectedForm.id));
                 setFormulas(formulas.filter((doc) => doc.id != selectedForm.id));
+                setSelectedForm(null);
                 toast.current.show({ severity: 'sucess', summary: 'Success', detail: 'Formula Successfully Deleted!' });
             } catch (error) {
                 toast.current.show({ severity: 'error', summary: 'Error', detail: 'Could not delete Formula' });
@@ -230,6 +232,16 @@ export default function Page () {
         fetchData();
     }, []);
 
+    if (loading) {
+        return (
+            <PrimeReactProvider>
+                 <div style={{minHeight: '100vh'}} className='justify-center items-center flex'>
+                    <i className="pi pi-spin pi-spinner" style={{ fontSize: '2rem' }}></i>
+                 </div>
+            </PrimeReactProvider>
+        )
+    }
+
     return (
         <PrimeReactProvider>
             <Toast ref={toast} />
@@ -245,7 +257,7 @@ export default function Page () {
                     }
                 />
                 <DataTable value={variables} selectionMode="single" selection={selectedVar} className='mx-3' loading={loading}
-                onSelectionChange={(e) => setSelectedVar(e.value)} sortField='type' sortOrder={1} scrollable scrollHeight='400px'>
+                onSelectionChange={(e) => setSelectedVar(e.value)} sortField='type' sortOrder={1}>
                     <Column field='name' header='Name' sortable filter/>
                     <Column field='type' header='Type' sortable filter/>
                     <Column field='truthValue' header='T/F' body={truthValueTemplate} sortable filter/>

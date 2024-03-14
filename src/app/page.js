@@ -93,7 +93,9 @@ export default function Home() {
     if (loading) {
         return (
             <PrimeReactProvider>
-                <h1 className='center text-xl m-3 p-3'>Loading...</h1>
+                 <div style={{minHeight: '100vh'}} className='justify-center items-center flex'>
+                    <i className="pi pi-spin pi-spinner" style={{ fontSize: '2rem' }}></i>
+                 </div>
             </PrimeReactProvider>
         )
     }
