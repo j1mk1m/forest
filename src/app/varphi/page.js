@@ -54,6 +54,9 @@ export default function Page () {
             const psi = c.split("OR");
             let satisfied = false;
             for (let literal of psi) {
+                if (literal.trim() == "") {
+                    satisfied = true;
+                }
                 if (variableNameArray.includes(literal.trim().toLowerCase())) {
                     satisfied = true;
                 }
@@ -77,7 +80,15 @@ export default function Page () {
     const fetchData = async () => {
         try {
             const varDocs = await getDocs(collection(db, "variables"));
-            const newVars = varDocs.docs.map((doc) => ({...doc.data(), id: doc.id})); 
+            const newVars = varDocs.docs.map((doc) => ({...doc.data(), id: doc.id})).sort(function(a, b) {
+                if (a.name < b.name) {
+                    return -1;
+                }
+                if (a.name > b.name) {
+                    return 1;
+                }
+                return 0; 
+            });
             const nameArray = newVars.filter((doc) => doc.truthValue).map((doc) => doc.name.toLowerCase());
             setVariables(newVars);
             const formulaDocs = await getDocs(collection(db, "formulas"));
@@ -120,6 +131,20 @@ export default function Page () {
         }
     }
 
+    const editVariable = (item) => {
+        setEditingId(item.id);
+        setVarName(item.name);
+        setVarTruth(item.truthValue);
+        setVarType(item.type);
+        setEditVar(true);
+    }
+
+    const varEditButtonTemplate = (value) => {
+        return (
+            <Button icon="pi pi-pencil" onClick={() => editVariable(value)} rounded text raised />
+        )
+    }
+
     const editFormula = (item) => {
         setEditingId(item.id);
         setFormName(item.name);
@@ -130,7 +155,7 @@ export default function Page () {
         setEditForm(true);
     }
 
-    const editButtonTemplate = (value) => {
+    const formEditButtonTemplate = (value) => {
         return (
             <Button icon="pi pi-pencil" onClick={() => editFormula(value)} rounded text raised/>
         )
@@ -147,8 +172,13 @@ export default function Page () {
                 type: varType,
                 truthValue: varTruth
             };
-            const ret = await addDoc(collection(db, "variables"), data);
-            variables.push({...data, id:ret.id});
+            if (editingId) {
+                await setDoc(doc(db, "variables", editingId), {...data, id:editingId});
+                variables[variables.findIndex((doc) => doc.id == editingId)] = {...data, id:editingId};
+            } else {
+                const ret = await addDoc(collection(db, "variables"), data);
+                variables.push({...data, id:ret.id});
+            }
             setVariables(variables); 
             setVarName("");
             setVarType("");
@@ -277,6 +307,7 @@ export default function Page () {
                     <Column field='name' header='Name' sortable filter/>
                     <Column field='type' header='Type' sortable filter/>
                     <Column field='truthValue' header='T/F' body={truthValueTemplate} sortable filter/>
+                    <Column body={(value) => varEditButtonTemplate(value)} />
                 </DataTable>
                 <Toolbar className='p-2 mx-3 mt-3 rounded-xl'
                     start={<h3 className='pl-2 font-bold'>Formulas</h3>}
@@ -287,14 +318,12 @@ export default function Page () {
                     }
                 />
                 <DataTable value={formulas} selectionMode="single" selection={selectedForm} className='mx-3' loading={loading}
-                onSelectionChange={(e) => setSelectedForm(e.value)} paginator rows={10} sortField='canMake' sortOrder={-1}>
+                onSelectionChange={(e) => setSelectedForm(e.value)} paginator rows={10} sortField='tags' sortOrder={1}>
                     <Column field='name' header='Name' sortable filter/>
                     <Column field='tags' header='Tags' sortable filter/>
                     <Column field='formula' header='Formula'/>
-                    {/* <Column field='details' header='Details'/>
-                    <Column field='link' header='Link'/> */}
                     <Column field='canMake' header="T/F" body={boolTemplate} sortable/>
-                    <Column body={(value) => editButtonTemplate(value)} />
+                    <Column body={(value) => formEditButtonTemplate(value)} />
                 </DataTable>
             <Dialog header="Variable" visible={editVar} className='min-w-max' onHide={clearDialog}>
                 <div class='flex flex-col'>
