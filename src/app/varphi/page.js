@@ -5,7 +5,6 @@ import { PrimeReactProvider } from 'primereact/api';
 import { Toolbar } from 'primereact/toolbar';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
-import { MultiSelect } from 'primereact/multiselect';
 import { Button } from 'primereact/button';
 import { Checkbox } from 'primereact/checkbox';
 import { Dialog } from 'primereact/dialog';
@@ -16,40 +15,62 @@ import { InputTextarea } from 'primereact/inputtextarea';
 import 'primeicons/primeicons.css';
 
 import MenuBar from '@/app/_components/menubar';
-import { db, auth } from '@/app/page';
+import { db } from '@/app/page';
 import { collection, getDocs, doc, setDoc, addDoc, deleteDoc, updateDoc } from 'firebase/firestore';
 
 export default function Page () {
     const toast = useRef(null);
+
+    // Data
     const [formulas, setFormulas] = useState([]);
     const [variables, setVariables] = useState([]);
+
+    // Selected row in table
     const [selectedVar, setSelectedVar] = useState(null);
     const [selectedForm, setSelectedForm] = useState(null);
+
+    // Edit status
     const [editVar, setEditVar] = useState(false);
     const [editForm, setEditForm] = useState(false);
+
+    // Variable editor fields
     const [varName, setVarName] = useState("");
     const [varType, setVarType] = useState("");
     const [varTruth, setVarTruth] = useState(false);
+
+    // Formula editor fields
     const [formName, setFormName] = useState("");
     const [formTags, setFormTags] = useState("");
+    const [formFormula, setFormFormula] = useState("");
     const [formDetails, setFormDetails] = useState("");
     const [formLink, setFormLink] = useState("");
-    const [editingId, setEditingId] = useState(null);
-    const [selectedVars, setSelectedVars] = useState([]);
-    const [loading, setLoading] = useState(true);
+
+    const [editingId, setEditingId] = useState(null); // Currently editiing ID
+    const [loading, setLoading] = useState(true); // loading status
+
+    const checkCanMake = (formula, variableNameArray) => {
+        const phi = formula.split(",");
+        for (let c of phi) {
+            const psi = c.split("OR");
+            let satisfied = false;
+            for (let literal of psi) {
+                if (variableNameArray.includes(literal.trim().toLowerCase())) {
+                    satisfied = true;
+                }
+            }
+            if (!satisfied) {
+                return false;
+            }
+        }
+        return true;
+    }
 
     const updateFormula = () => {
         const nameArray = variables.filter((doc) => doc.truthValue).map((doc) => doc.name.toLowerCase());
-        setFormulas(formulas.map((doc) => {
-            const phi = doc.formula.split(',');
-            for (let c of phi) {
-                if (!nameArray.includes(c.trim().toLowerCase())) {
-                    doc.canMake = false;
-                    return doc;
-                }
-            }
-            doc.canMake = true;
-            return doc;
+        setFormulas(formulas.map(
+            (doc) => {
+                doc.canMake = checkCanMake(doc.formula, nameArray);
+                return doc;
         }));
     }
 
@@ -62,13 +83,8 @@ export default function Page () {
             const formulaDocs = await getDocs(collection(db, "formulas"));
             setFormulas(formulaDocs.docs.map((doc) => ({...doc.data(), id:doc.id})).map(
                 (doc) => {
-                    const phi = doc.formula.split(',');
-                    for (let c of phi) {
-                        if (!nameArray.includes(c.trim().toLowerCase())) {
-                            return {...doc, canMake: false};
-                        }
-                    }
-                    return {...doc, canMake:true};
+                    const canMake = checkCanMake(doc.formula, nameArray);
+                    return {...doc, canMake};
                 }
             ));
             setLoading(false);
@@ -109,7 +125,7 @@ export default function Page () {
         setFormName(item.name);
         setFormDetails(item.details);
         setFormTags(item.tags);
-        setSelectedVars(item.formula.split(',').map((v) => v.trim()));
+        setFormFormula(item.formula)
         setFormLink(item.link);
         setEditForm(true);
     }
@@ -156,7 +172,7 @@ export default function Page () {
                 name: formName,
                 tags: formTags,
                 details: formDetails,
-                formula: selectedVars.join(', '),
+                formula: formFormula,
                 link: formLink,
             };
             if (editingId) {
@@ -170,7 +186,7 @@ export default function Page () {
             setFormName("");
             setFormDetails("");
             setFormLink("");
-            setSelectedVars([]);
+            setFormFormula("");
             setFormTags("");
             setEditForm(false);
             updateFormula();
@@ -222,7 +238,7 @@ export default function Page () {
         setFormName("");
         setFormLink("");
         setFormTags("");
-        setSelectedVars([]);
+        setFormFormula("");
         setEditingId(null);
         setEditVar(false);
         setEditForm(false)
@@ -308,8 +324,7 @@ export default function Page () {
                     </div>
                     <div className='flex flex-row py-2 items-center'>
                         <p>Formula: </p>
-                        <MultiSelect value={selectedVars} onChange={(e) => setSelectedVars(e.value)} options={variables.map(v => v.name)}
-                            placeholder="Select Variables" maxSelectedLabels={3} className="w-full md:w-20rem" filter/>
+                        <InputText value={formFormula} onChange={(e) => setFormFormula(e.target.value)} className="ml-3 flex-1"/>
                     </div>
                     <div className='flex flex-row py-2 items-center'>
                         <p>Details: </p>

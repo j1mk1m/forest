@@ -1,11 +1,15 @@
 'use client';
-import React from 'react';
+import React, { useRef } from 'react';
 import { useState } from 'react';
 
 import 'primereact/resources/themes/saga-green/theme.css';
 import { PrimeReactProvider } from 'primereact/api';
 import { Card } from 'primereact/card';
 import { Button } from 'primereact/button';
+import { Checkbox } from 'primereact/checkbox';
+import { Column } from 'primereact/column';
+import { DataTable } from 'primereact/datatable';
+import { Toast } from 'primereact/toast';
 import { InputText } from 'primereact/inputtext';
 import { InputNumber } from 'primereact/inputnumber';
 import { Password } from 'primereact/password';
@@ -15,7 +19,7 @@ import MenuBar from '@/app/_components/menubar';
 
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
-import { getFirestore, collection, getDocs, doc, setDoc, getDoc, addDoc, deleteDoc } from 'firebase/firestore';
+import { getFirestore, collection, getDocs, doc, updateDoc} from 'firebase/firestore';
 
 import { getAuth, signInWithEmailAndPassword } from "firebase/auth";
 
@@ -37,19 +41,60 @@ export const db = getFirestore(app);
 export const auth = getAuth();
 
 export default function Home() {
+    const toast = useRef(null);
+
+    // Authentication
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [authUser, setAuthUser] = useState(false);
     const [loading, setLoading] = useState(true);
 
+    // Focus time
     const [number, setNumber] = useState(52);
     const [disabled, setDisabled] = useState(false);
+
+    const [checklist, setChecklist] = useState([]);
+
+    const fetchData = async () => {
+        try {
+            const docs = await getDocs(collection(db, "checklist"));
+            const items = docs.docs.map((doc) => {
+                const data = doc.data();
+                return {...data, id: doc.id }
+            });
+            setChecklist(items);
+            setLoading(false);
+        } catch (error) {
+            toast.current.show({ severity: 'error', summary: 'Error', detail: 'Could not fetch data' }); 
+            console.log(error);
+        }
+    }
+
+    const checkButtonChanged = async (e) => {
+        try {
+            await updateDoc(doc(db, 'checklist', e.target.id), {done: e.target.checked});
+            const index = checklist.findIndex((v) => v.id == e.target.id);
+            checklist[index].done = e.done;
+        } catch (error) {
+            toast.current.show({ severity: 'error', summary: 'Error', detail: 'Could not update checklist item' });
+            console.log(error);
+            console.log(e);
+        }
+    }
+
+    const checkButtonTemplate = (value) => {
+        return (
+            <Checkbox id={value.id} checked={value.done} onChange={checkButtonChanged} />
+        )
+    }
 
     auth.onAuthStateChanged((authUser) => {
         authUser
         ? setAuthUser(true)
         : setAuthUser(false);
-        setLoading(false);
+        if (authUser) {
+            fetchData();
+        }
     });
 
     const handleSignin = () => {
@@ -74,16 +119,16 @@ export default function Home() {
         timeEl.innerHTML = time;
         const timeout = setInterval(() => timeEl.innerHTML -= 1, 60000);
         setTimeout(() => {
-            clearInterval(timeout);
+            clearInterval(timeout); 
             if (!("Notification" in window)) {
                 alert("This browser does not support desktop notification");
             } else if (Notification.permission === "granted") {
                 const notification = new Notification("Time!");
             } else if (Notification.permission !== "denied") {
                 Notification.requestPermission().then((permission) => {
-                if (permission === "granted") {
-                    const notification = new Notification("Time!");
-                }
+                    if (permission === "granted") {
+                        const notification = new Notification("Time!");
+                    }
                 });
             }
             setDisabled(false);
@@ -117,6 +162,7 @@ export default function Home() {
 
     return (
         <PrimeReactProvider>
+            <Toast ref={toast} />
             <MenuBar />
             <h1 className="text-black text-lg font-bold m-5 text-center">forest</h1>
             <p className='text-black text-md text-center'>Start a new focus session...</p>
@@ -128,6 +174,11 @@ export default function Home() {
                 <p id="timeleft" className='text-center'>0</p>
                 <p className='text-center mx-1'>minutes remaining</p>
             </div>
+            <h2 className='text-black text-lg font-bold m-5 text-center'>Daily Checklist</h2>
+            <DataTable value={checklist} className='mx-3' loading={loading}>
+                <Column field="name" sortable header="Name"></Column>
+                <Column field="done" body={(value) => checkButtonTemplate(value)} />
+            </DataTable>           
         </PrimeReactProvider>
     );
 }
