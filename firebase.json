@@ -12,9 +12,16 @@
         "destination": "/index.html"
       }
     ],
-    "headers": [{
-      "key": "Permissions-Policy",
-      "value": "browsing-topics=()"
-    }]
+    "headers": [
+      {
+        "source": "**",
+        "headers": [
+          {
+            "key": "Permissions-Policy",
+            "value": "browsing-topics=()"
+          }
+        ]
+      }
+    ]
   }
 }
